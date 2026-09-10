@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import type { Garden } from "@/hooks/use-garden";
+import { todayString } from "@/hooks/use-garden";
 import type { GardenColors } from "@/hooks/use-garden-colors";
 
 type Props = {
@@ -28,6 +29,7 @@ export function CalendarGrid({ garden, uid, colors }: Props) {
   });
 
   const partnerId = garden.members.find((m) => m !== uid);
+  const today = todayString();
 
   const { weeks, monthLabel } = useMemo(() => {
     const { year, month } = cursor;
@@ -59,7 +61,17 @@ export function CalendarGrid({ garden, uid, colors }: Props) {
     setCursor((c) => (c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 }));
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.cardBackground, shadowColor: colors.shadow }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.cardBackground,
+          shadowColor: colors.shadow,
+          shadowOpacity: colors.cardShadowOpacity,
+          borderColor: colors.cardBorderColor,
+        },
+      ]}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={goPrev} hitSlop={10}>
           <Ionicons name="chevron-back" size={20} color={colors.primary} />
@@ -83,9 +95,14 @@ export function CalendarGrid({ garden, uid, colors }: Props) {
           {week.map((day, di) => {
             if (day === null) return <View key={di} style={styles.dayCell} />;
             const key = toDateKey(cursor.year, cursor.month, day);
+            const isToday = key === today;
             const record = garden.history?.[key] ?? {};
-            const meDid = !!record[uid];
-            const partnerDid = !!partnerId && !!record[partnerId];
+
+            const meDid = !!record[uid] || (isToday && garden.lastCheckIn[uid] === today);
+            const partnerDid =
+              (!!partnerId && !!record[partnerId]) ||
+              (isToday && !!partnerId && garden.lastCheckIn[partnerId] === today);
+
             const both = meDid && partnerDid;
             const some = meDid || partnerDid;
 
@@ -94,18 +111,17 @@ export function CalendarGrid({ garden, uid, colors }: Props) {
                 <View
                   style={[
                     styles.dayCircle,
-                    both && { backgroundColor: colors.primary },
-                    some && !both && { backgroundColor: colors.pillBackground, borderWidth: 1.5, borderColor: colors.primary },
+                    isToday && { borderWidth: 1.5, borderColor: colors.primary },
+                    both && { backgroundColor: colors.primary, borderWidth: 0 },
+                    some &&
+                      !both && {
+                        backgroundColor: colors.pillBackground,
+                        borderWidth: 1.5,
+                        borderColor: colors.primary,
+                      },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.dayText,
-                      { color: both ? "#fff" : colors.text },
-                    ]}
-                  >
-                    {day}
-                  </Text>
+                  <Text style={[styles.dayText, { color: both ? "#fff" : colors.text }]}>{day}</Text>
                 </View>
               </View>
             );
@@ -119,7 +135,12 @@ export function CalendarGrid({ garden, uid, colors }: Props) {
           <Text style={[styles.legendText, { color: colors.textMuted }]}>Both bloomed</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.pillBackground, borderWidth: 1.5, borderColor: colors.primary }]} />
+          <View
+            style={[
+              styles.legendDot,
+              { backgroundColor: colors.pillBackground, borderWidth: 1.5, borderColor: colors.primary },
+            ]}
+          />
           <Text style={[styles.legendText, { color: colors.textMuted }]}>One checked in</Text>
         </View>
       </View>
@@ -133,8 +154,8 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     borderRadius: 20,
     padding: 18,
+    borderWidth: 1,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 3,
   },

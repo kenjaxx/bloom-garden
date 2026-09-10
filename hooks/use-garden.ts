@@ -19,13 +19,16 @@ import type { FlowerColorKey } from "@/hooks/use-garden-colors";
 
 export const STAGE_NAMES = ["Seed", "Sprout", "Bud", "Blooming", "Full Bloom"];
 export const STREAK_MILESTONES = [7, 30, 100];
+export const FREEZE_EVERY_STREAK_DAYS = 30;
 
 export type Garden = {
   id: string;
   code: string;
+  name: string;
   members: string[];
   stage: number;
   streak: number;
+  freezes: number;
   lastCheckIn: Record<string, string>;
   lastSuccessDate: string | null;
   history: Record<string, Record<string, boolean>>;
@@ -37,6 +40,8 @@ export type Garden = {
 export type Milestone =
   | { type: "stage"; label: string }
   | { type: "streak"; value: number }
+  | { type: "freeze"; value: number }
+  | { type: "freezeUsed" }
   | null;
 
 function generateCode() {
@@ -67,9 +72,11 @@ function normalizeGarden(id: string, data: DocumentData): Garden {
   return {
     id,
     code: data.code ?? "",
+    name: data.name ?? "",
     members: data.members ?? [],
     stage: data.stage ?? 0,
     streak: data.streak ?? 0,
+    freezes: data.freezes ?? 0,
     lastCheckIn: data.lastCheckIn ?? {},
     lastSuccessDate: data.lastSuccessDate ?? null,
     history: data.history ?? {},
@@ -132,9 +139,11 @@ export function useGarden() {
     try {
       await addDoc(collection(db, "gardens"), {
         code: generateCode(),
+        name: "",
         members: [uid],
         stage: 0,
         streak: 0,
+        freezes: 0,
         lastCheckIn: {},
         lastSuccessDate: null,
         history: {},
@@ -181,7 +190,6 @@ export function useGarden() {
     if (!garden) return;
     setError("");
     const today = todayString();
-    const yesterday = yesterdayString(today);
     const updatedCheckIns = { ...garden.lastCheckIn, [uid]: today };
     const allCheckedIn = garden.members.every((m) => updatedCheckIns[m] === today);
 
@@ -196,28 +204,49 @@ export function useGarden() {
 
     if (allCheckedIn && garden.members.length > 1) {
       let newStage = garden.stage;
-      let newStreak = garden.streak;
+      let newStreak = garden.streak || 0;
+      let newFreezes = garden.freezes || 0;
+      let usedFreeze = false;
 
       if (garden.lastSuccessDate) {
         const gap = daysBetween(garden.lastSuccessDate, today);
         if (gap > 1) {
-          newStage = Math.max(0, garden.stage - 1);
-          newStreak = 1;
+          if (newFreezes > 0) {
+            // Spend a banked streak freeze instead of resetting.
+            newFreezes -= 1;
+            newStreak += 1;
+            usedFreeze = true;
+          } else {
+            newStage = Math.max(0, garden.stage - 1);
+            newStreak = 1;
+          }
         } else {
-          newStreak = (garden.streak || 0) + 1;
+          newStreak += 1;
         }
       } else {
         newStreak = 1;
+      }
+
+      // Bank a fresh streak freeze every 30-day streak milestone.
+      let earnedFreeze = false;
+      if (newStreak > 0 && newStreak % FREEZE_EVERY_STREAK_DAYS === 0) {
+        newFreezes += 1;
+        earnedFreeze = true;
       }
 
       newStage = Math.min(newStage + 1, STAGE_NAMES.length - 1);
 
       updates.stage = newStage;
       updates.streak = newStreak;
+      updates.freezes = newFreezes;
       updates.lastSuccessDate = today;
 
       if (newStage === STAGE_NAMES.length - 1 && garden.stage !== newStage) {
         nextMilestone = { type: "stage", label: STAGE_NAMES[newStage] };
+      } else if (usedFreeze) {
+        nextMilestone = { type: "freezeUsed" };
+      } else if (earnedFreeze) {
+        nextMilestone = { type: "freeze", value: newFreezes };
       } else if (STREAK_MILESTONES.includes(newStreak)) {
         nextMilestone = { type: "streak", value: newStreak };
       }
@@ -239,6 +268,16 @@ export function useGarden() {
       await updateDoc(doc(db, "gardens", garden.id), { flowerColor: color });
     } catch (e: any) {
       setError(e.message);
+    }
+  };
+
+  const updateGardenName = async (name: string) => {
+    if (!garden) return;
+    try {
+      await updateDoc(doc(db, "gardens", garden.id), { name: name.trim().slice(0, 40) });
+    } catch (e: any) {
+      setError(e.message);
+      throw e;
     }
   };
 
@@ -277,6 +316,7 @@ export function useGarden() {
     checkIn,
     leaveGarden,
     setFlowerColor,
+    updateGardenName,
     partnerId,
     partnerCheckedInToday,
     iCheckedInToday,

@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CalendarGrid } from "@/components/calendar-grid";
@@ -11,44 +12,51 @@ export default function HistoryScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <LinearGradient colors={[colors.gradientFrom, colors.gradientTo]} style={styles.flexFill}>
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </LinearGradient>
     );
   }
 
   if (!garden) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.emptyText}>Create or join a garden to see your history here.</Text>
-      </View>
+      <LinearGradient colors={[colors.gradientFrom, colors.gradientTo]} style={styles.flexFill}>
+        <View style={styles.container}>
+          <Text style={styles.emptyText}>Create or join a garden to see your history here.</Text>
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <Text style={styles.title}>Your History</Text>
-      <Text style={styles.subtitle}>Every day you and your partner showed up together</Text>
-      <CalendarGrid garden={garden} uid={uid} colors={colors} />
-    </ScrollView>
+    <LinearGradient colors={[colors.gradientFrom, colors.gradientTo]} style={styles.flexFill}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Your History</Text>
+          <Text style={styles.subtitle}>Every day you and your partner showed up together</Text>
+          <CalendarGrid garden={garden} uid={uid} colors={colors} />
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 function getStyles(colors: ReturnType<typeof useGardenColors>) {
   return StyleSheet.create({
+    flexFill: { flex: 1 },
     container: {
-      flex: 1,
+      flexGrow: 1,
       justifyContent: "center",
       alignItems: "center",
       padding: 24,
-      backgroundColor: colors.background,
-    },
-    scrollContainer: {
-      flexGrow: 1,
-      alignItems: "center",
-      padding: 24,
       paddingTop: 48,
-      backgroundColor: colors.background,
+    },
+    content: {
+      width: "100%",
+      maxWidth: 420,
+      alignItems: "center",
     },
     title: { fontSize: 24, fontWeight: "800", color: colors.text, marginBottom: 4 },
     subtitle: { fontSize: 13, color: colors.textMuted, marginBottom: 20, textAlign: "center" },

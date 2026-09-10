@@ -30,16 +30,15 @@ export default function RegisterScreen() {
       return;
     }
 
-    setSubmitting(true);
+       setSubmitting(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      router.replace("/(tabs)");
+      router.replace("/onboarding");
     } catch (e: any) {
       setError(friendlyError(e));
     } finally {
       setSubmitting(false);
     }
-  };
 
   const canSubmit =
     email.trim().length > 0 &&

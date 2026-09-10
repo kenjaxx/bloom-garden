@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { auth } from "@/firebaseConfig";
 import { useGarden } from "@/hooks/use-garden";
@@ -10,8 +10,10 @@ import { FLOWER_COLORS, FlowerColorKey, useGardenColors } from "@/hooks/use-gard
 export default function ProfileScreen() {
   const router = useRouter();
   const colors = useGardenColors();
-  const { garden, setFlowerColor, leaveGarden } = useGarden();
+  const { garden, setFlowerColor, leaveGarden, updateGardenName } = useGarden();
   const [leaving, setLeaving] = useState(false);
+  const [nameDraft, setNameDraft] = useState(garden?.name ?? "");
+  const [savingName, setSavingName] = useState(false);
   const styles = getStyles(colors);
 
   const handleSignOut = async () => {
@@ -19,10 +21,23 @@ export default function ProfileScreen() {
     router.replace("/");
   };
 
+  const handleSaveName = async () => {
+    setSavingName(true);
+    try {
+      await updateGardenName(nameDraft);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   const handleLeaveGarden = () => {
+    const streakWarning =
+      garden && garden.streak > 0
+        ? ` You currently have a ${garden.streak}-day streak that will be lost.`
+        : "";
     Alert.alert(
       "Leave this garden?",
-      "You'll need a new invite code to join again, and your progress in this garden will be lost.",
+      `You'll need a new invite code to join again, and your progress in this garden will be lost.${streakWarning}`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -43,55 +58,91 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>👤 Profile</Text>
-      <Text style={styles.email}>{auth.currentUser?.email}</Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>👤 Profile</Text>
+        <Text style={styles.email}>{auth.currentUser?.email}</Text>
 
-      {garden ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Flower color</Text>
-          <View style={styles.swatchRow}>
-            {(Object.keys(FLOWER_COLORS) as FlowerColorKey[]).map((key) => {
-              const option = FLOWER_COLORS[key];
-              const selected = garden.flowerColor === key;
-              return (
+        {garden ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Garden name</Text>
+              <View style={styles.nameRow}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={nameDraft}
+                  onChangeText={setNameDraft}
+                  placeholder="Name your garden"
+                  placeholderTextColor={colors.textFaint}
+                  maxLength={40}
+                />
                 <TouchableOpacity
-                  key={key}
-                  onPress={() => setFlowerColor(key)}
-                  style={[
-                    styles.swatch,
-                    { backgroundColor: option.swatch },
-                    selected && styles.swatchSelected,
-                  ]}
-                  activeOpacity={0.8}
+                  style={[styles.saveNameButton, savingName && styles.buttonDisabled]}
+                  onPress={handleSaveName}
+                  disabled={savingName || nameDraft.trim() === (garden.name ?? "")}
                 >
-                  {selected ? <Text style={styles.swatchCheck}>✓</Text> : null}
+                  <Text style={styles.saveNameButtonText}>{savingName ? "..." : "Save"}</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-          <Text style={styles.hint}>Applies to both members of the garden.</Text>
-        </View>
-      ) : null}
+              </View>
+              <Text style={styles.hint}>Shown to both members instead of the invite code.</Text>
+            </View>
 
-      <TouchableOpacity style={styles.buttonOutline} onPress={() => router.back()}>
-        <Text style={styles.buttonOutlineText}>Back to Garden</Text>
-      </TouchableOpacity>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Flower color</Text>
+              <View style={styles.swatchRow}>
+                {(Object.keys(FLOWER_COLORS) as FlowerColorKey[]).map((key) => {
+                  const option = FLOWER_COLORS[key];
+                  const selected = garden.flowerColor === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => setFlowerColor(key)}
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: option.swatch },
+                        selected && styles.swatchSelected,
+                      ]}
+                      activeOpacity={0.8}
+                    >
+                      {selected ? <Text style={styles.swatchCheck}>✓</Text> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Text style={styles.hint}>Applies to both members of the garden.</Text>
+            </View>
 
-      {garden ? (
-        <TouchableOpacity
-          style={[styles.buttonOutline, styles.leaveButton]}
-          onPress={handleLeaveGarden}
-          disabled={leaving}
-        >
-          <Text style={[styles.buttonOutlineText, styles.leaveButtonText]}>
-            {leaving ? "Leaving..." : "Leave Garden"}
-          </Text>
+            {garden.freezes > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Streak freezes</Text>
+                <Text style={styles.freezeText}>
+                  🧊 You have {garden.freezes} banked. One is used automatically to protect your
+                  streak if you both miss a day.
+                </Text>
+              </View>
+            )}
+          </>
+        ) : null}
+
+        <TouchableOpacity style={styles.buttonOutline} onPress={() => router.back()}>
+          <Text style={styles.buttonOutlineText}>Back to Garden</Text>
         </TouchableOpacity>
-      ) : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleSignOut}>
-        <Text style={styles.buttonText}>Sign Out</Text>
-      </TouchableOpacity>
+        {garden ? (
+          <TouchableOpacity
+            style={[styles.buttonOutline, styles.leaveButton]}
+            onPress={handleLeaveGarden}
+            disabled={leaving}
+          >
+            <Text style={[styles.buttonOutlineText, styles.leaveButtonText]}>
+              {leaving ? "Leaving..." : "Leave Garden"}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+          <Text style={styles.buttonText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -105,10 +156,35 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
       padding: 24,
       backgroundColor: colors.background,
     },
+    content: {
+      width: "100%",
+      maxWidth: 420,
+      alignItems: "center",
+    },
     title: { fontSize: 22, fontWeight: "bold", marginBottom: 12, color: colors.text },
     email: { fontSize: 16, color: colors.textMuted, marginBottom: 32 },
     section: { width: "100%", marginBottom: 24 },
     sectionTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 10 },
+    nameRow: { flexDirection: "row", gap: 10 },
+    nameInput: {
+      flex: 1,
+      borderWidth: 1.5,
+      borderColor: colors.inputBorder,
+      backgroundColor: colors.inputBackground,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      height: 46,
+      color: colors.text,
+      fontSize: 14,
+    },
+    saveNameButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingHorizontal: 18,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    saveNameButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
     swatchRow: { flexDirection: "row", gap: 14 },
     swatch: {
       width: 44,
@@ -122,6 +198,7 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
     swatchSelected: { borderColor: colors.text },
     swatchCheck: { color: "#fff", fontWeight: "800" },
     hint: { fontSize: 12, color: colors.textFaint, marginTop: 10 },
+    freezeText: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
     button: {
       backgroundColor: "#e53935",
       padding: 14,
@@ -129,6 +206,7 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
       width: "100%",
       marginTop: 12,
     },
+    buttonDisabled: { opacity: 0.6 },
     buttonText: { color: "#fff", textAlign: "center", fontWeight: "600" },
     buttonOutline: {
       padding: 14,

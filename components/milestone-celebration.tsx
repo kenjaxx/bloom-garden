@@ -58,13 +58,26 @@ function Particle({ index, onLastDone }: { index: number; onLastDone?: () => voi
   );
 }
 
+function labelFor(milestone: Milestone): string {
+  if (!milestone) return "";
+  switch (milestone.type) {
+    case "stage":
+      return `You reached ${milestone.label}! 🎉`;
+    case "freeze":
+      return `Streak freeze earned! (${milestone.value} banked) 🧊`;
+    case "freezeUsed":
+      return "A streak freeze just saved your streak! 🧊";
+    case "streak":
+      return `${milestone.value}-day streak! 🔥`;
+    default:
+      return "";
+  }
+}
+
 export function MilestoneCelebration({ milestone, onDone }: Props) {
   if (!milestone) return null;
 
-  const label =
-    milestone.type === "stage"
-      ? `You reached ${milestone.label}! 🎉`
-      : `${milestone.value}-day streak! 🔥`;
+  const label = labelFor(milestone);
 
   return (
     <Animated.View pointerEvents="none" style={styles.overlay}>

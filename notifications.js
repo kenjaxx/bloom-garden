@@ -9,6 +9,20 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// A small pool of reminder copy so the daily nudge doesn't become
+// wallpaper. Note: since this is a single repeating local trigger, the
+// message picked is fixed for as long as the schedule stands — it's
+// re-rolled each time registerForDailyReminder() runs (e.g. after a
+// check-in or app relaunch), which gives real variety over time without
+// needing a server-side scheduler.
+const REMINDER_MESSAGES = [
+  "Don't forget to check in today and keep your garden growing!",
+  "Your garden's waiting on you. Got a minute to check in?",
+  "A quick check-in today keeps the streak alive 🔥",
+  "Show up for your garden (and your person) today 🌱",
+  "One tap today, one step closer to Full Bloom 🌸",
+];
+
 async function ensurePermission() {
   if (Platform.OS === "web") return false;
 
@@ -35,11 +49,13 @@ export async function registerForDailyReminder() {
 
   await Notifications.cancelScheduledNotificationAsync("daily-reminder").catch(() => {});
 
+  const body = REMINDER_MESSAGES[Math.floor(Math.random() * REMINDER_MESSAGES.length)];
+
   await Notifications.scheduleNotificationAsync({
     identifier: "daily-reminder",
     content: {
       title: "🌱 Bloom Garden",
-      body: "Don't forget to check in today and keep your garden growing!",
+      body,
     },
     trigger: {
       hour: 19,
