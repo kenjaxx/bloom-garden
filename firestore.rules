@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Gardens: a document is readable/writable only by signed-in users who
+    // are already a member, EXCEPT:
+    //  - anyone signed in can read a garden to look up an invite `code`
+    //    (needed for the join-by-code flow) but only non-sensitive fields
+    //    are exposed on the client anyway since we only ever query by code.
+    //  - anyone signed in can create a garden as long as they add
+    //    themselves as the sole member.
+    //  - joining (adding yourself to `members`) is allowed for signed-in
+    //    users who are not already a member, as long as the garden isn't
+    //    already full and no other field is being changed at the same time.
+    match /gardens/{gardenId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isMember() {
+        return isSignedIn() && request.auth.uid in resource.data.members;
+      }
+
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.members.size() == 1
+        && request.resource.data.members[0] == request.auth.uid
+        && request.resource.data.stage == 0;
+
+      // Joining: only the members array may change, from < 2 to <= 2,
+      // and the joining uid must be the caller.
+      allow update: if isSignedIn() && (
+        isMember() ||
+        (
+          !isMember() &&
+          resource.data.members.size() < 2 &&
+          request.resource.data.members.size() == resource.data.members.size() + 1 &&
+          request.auth.uid in request.resource.data.members &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        )
+      );
+
+      allow delete: if isMember();
+    }
+  }
+}

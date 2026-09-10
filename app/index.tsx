@@ -1,9 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -19,12 +24,13 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace("/garden");
+        router.replace("/(tabs)");
       }
     });
     return unsubscribe;
@@ -39,6 +45,26 @@ export default function LoginScreen() {
       setError(friendlyError(e));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Enter your email above first, then tap 'Forgot password?'");
+      return;
+    }
+    setError("");
+    setSendingReset(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      Alert.alert(
+        "Check your inbox",
+        `We sent a password reset link to ${email.trim()}.`
+      );
+    } catch (e: any) {
+      setError(friendlyError(e));
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -85,6 +111,17 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
+        <TouchableOpacity
+          onPress={handleForgotPassword}
+          disabled={sendingReset}
+          style={styles.forgotRow}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.forgotText}>
+            {sendingReset ? "Sending reset link..." : "Forgot password?"}
+          </Text>
+        </TouchableOpacity>
+
         {error ? (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle-outline" size={16} color="#c0392b" />
@@ -125,8 +162,8 @@ function friendlyError(e: any) {
     return "Sign-in isn't set up yet. Enable Email/Password in Firebase Console.";
   }
   if (code.includes("invalid-email")) return "That email address doesn't look right.";
+  if (code.includes("user-not-found")) return "No account found with that email.";
   if (
-    code.includes("user-not-found") ||
     code.includes("wrong-password") ||
     code.includes("invalid-credential")
   ) {
@@ -217,6 +254,16 @@ const styles = StyleSheet.create({
   },
   inputFlex: { marginRight: 6 },
   eyeButton: { padding: 4 },
+  forgotRow: {
+    alignSelf: "flex-end",
+    marginBottom: 14,
+    marginTop: -6,
+  },
+  forgotText: {
+    color: "#4caf50",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",

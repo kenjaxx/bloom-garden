@@ -33,7 +33,7 @@ export default function RegisterScreen() {
     setSubmitting(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      router.replace("/garden");
+      router.replace("/(tabs)");
     } catch (e: any) {
       setError(friendlyError(e));
     } finally {

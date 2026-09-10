@@ -45,8 +45,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="register" />
-        <Stack.Screen name="garden" />
-        <Stack.Screen name="profile" />
+        <Stack.Screen name="(tabs)" />
       </Stack>
       <StatusBar style="auto" />
     </ErrorBoundary>
