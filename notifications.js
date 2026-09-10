@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 
 Notifications.setNotificationHandler({
@@ -9,6 +10,12 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForDailyReminder() {
+  // Local scheduled notifications aren't supported on web at all.
+  // Calling these APIs there throws immediately, so just skip.
+  if (Platform.OS === "web") {
+    return;
+  }
+
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 

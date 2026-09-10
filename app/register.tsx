@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
-import { useEffect, useState } from "react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,28 +13,27 @@ import {
 } from "react-native";
 import { auth } from "../firebaseConfig";
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/garden");
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  const handleLogin = async () => {
+  const handleSignUp = async () => {
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.replace("/garden");
     } catch (e: any) {
       setError(friendlyError(e));
     } finally {
@@ -42,7 +41,11 @@ export default function LoginScreen() {
     }
   };
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
+  const canSubmit =
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    confirmPassword.length > 0 &&
+    !submitting;
 
   return (
     <View style={styles.container}>
@@ -50,10 +53,10 @@ export default function LoginScreen() {
 
       <View style={styles.headerBlock}>
         <View style={styles.logoCircle}>
-          <Text style={styles.logoEmoji}>🌱</Text>
+          <Text style={styles.logoEmoji}>🌸</Text>
         </View>
-        <Text style={styles.title}>Bloom Garden</Text>
-        <Text style={styles.subtitle}>Grow something together, one day at a time</Text>
+        <Text style={styles.title}>Create an Account</Text>
+        <Text style={styles.subtitle}>Start a garden with someone you care about</Text>
       </View>
 
       <View style={styles.card}>
@@ -85,6 +88,23 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.inputWrapper}>
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={20}
+            color="#8a9a8a"
+            style={styles.inputIcon}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor="#a3b0a3"
+            secureTextEntry={!showPassword}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+        </View>
+
         {error ? (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle-outline" size={16} color="#c0392b" />
@@ -94,27 +114,27 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={[styles.button, !canSubmit && styles.buttonDisabled]}
-          onPress={handleLogin}
+          onPress={handleSignUp}
           disabled={!canSubmit}
           activeOpacity={0.85}
         >
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log In</Text>}
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Create Account</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.registerLinkRow}
-          onPress={() => router.push("/register")}
+          onPress={() => router.back()}
           activeOpacity={0.7}
         >
           <Text style={styles.registerLinkText}>
-            Don&apos;t have an account? <Text style={styles.registerLinkBold}>Sign Up</Text>
+            Already have an account? <Text style={styles.registerLinkBold}>Log In</Text>
           </Text>
         </TouchableOpacity>
       </View>
-
-      <Text style={styles.footerText}>
-        Check in daily with your partner and watch your garden bloom 🌸
-      </Text>
     </View>
   );
 }
@@ -122,16 +142,11 @@ export default function LoginScreen() {
 function friendlyError(e: any) {
   const code = e?.code || "";
   if (code.includes("configuration-not-found")) {
-    return "Sign-in isn't set up yet. Enable Email/Password in Firebase Console.";
+    return "Sign-up isn't set up yet. Enable Email/Password in Firebase Console.";
   }
   if (code.includes("invalid-email")) return "That email address doesn't look right.";
-  if (
-    code.includes("user-not-found") ||
-    code.includes("wrong-password") ||
-    code.includes("invalid-credential")
-  ) {
-    return "Incorrect email or password.";
-  }
+  if (code.includes("email-already-in-use")) return "An account already exists with that email.";
+  if (code.includes("weak-password")) return "Password should be at least 6 characters.";
   return e?.message || "Something went wrong. Please try again.";
 }
 
@@ -151,7 +166,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 130,
-    backgroundColor: "#dcefdc",
+    backgroundColor: "#f6dbe8",
   },
   headerBlock: {
     alignItems: "center",
@@ -175,10 +190,11 @@ const styles = StyleSheet.create({
   },
   logoEmoji: { fontSize: 34 },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "800",
     color: "#22392a",
     letterSpacing: 0.2,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
@@ -266,13 +282,5 @@ const styles = StyleSheet.create({
   registerLinkBold: {
     color: "#4caf50",
     fontWeight: "700",
-  },
-  footerText: {
-    textAlign: "center",
-    color: "#8a9a8a",
-    fontSize: 12,
-    marginTop: 22,
-    paddingHorizontal: 20,
-    maxWidth: 420,
   },
 });

@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import LottieView from "lottie-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -25,6 +24,7 @@ import {
 } from "firebase/firestore";
 
 const STAGE_NAMES = ["Seed", "Sprout", "Bud", "Blooming", "Full Bloom"];
+const STAGE_EMOJIS = ["🌰", "🌱", "🌿", "🌷", "🌸"];
 
 function generateCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -37,45 +37,6 @@ function generateCode() {
 
 function todayString() {
   return new Date().toISOString().split("T")[0];
-}
-
-// Falls back to an emoji if the Lottie file is missing/invalid/fails at runtime,
-// so a bad animation asset never blanks the whole screen.
-function SafeFlowerAnimation({ stage, totalStages }: { stage: number; totalStages: number }) {
-  const [failed, setFailed] = useState(false);
-  const animationRef = useRef(null);
-
-  if (failed) {
-    return (
-      <View style={styles.flowerFallback}>
-        <Text style={styles.flowerFallbackEmoji}>🌸</Text>
-      </View>
-    );
-  }
-
-  try {
-    return (
-      <LottieView
-        ref={animationRef}
-        source={require("../assets/animations/flower.json")}
-        style={styles.flowerAnimation}
-        progress={totalStages > 1 ? stage / (totalStages - 1) : 0}
-        autoPlay={false}
-        loop={false}
-        onAnimationFailure={(error) => {
-          console.error("Lottie animation failed to load:", error);
-          setFailed(true);
-        }}
-      />
-    );
-  } catch (e) {
-    console.error("Lottie threw while rendering:", e);
-    return (
-      <View style={styles.flowerFallback}>
-        <Text style={styles.flowerFallbackEmoji}>🌸</Text>
-      </View>
-    );
-  }
 }
 
 export default function GardenScreen() {
@@ -287,7 +248,9 @@ export default function GardenScreen() {
       <View style={styles.topDecoration} pointerEvents="none" />
 
       <View style={styles.gardenCard}>
-        <SafeFlowerAnimation stage={garden.stage} totalStages={STAGE_NAMES.length} />
+        <View style={styles.flowerFallback}>
+          <Text style={styles.flowerFallbackEmoji}>{STAGE_EMOJIS[garden.stage]}</Text>
+        </View>
 
         <Text style={styles.stageText}>{STAGE_NAMES[garden.stage]}</Text>
 
@@ -409,7 +372,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 3,
   },
-  flowerAnimation: { width: 220, height: 220 },
   flowerFallback: { width: 220, height: 220, justifyContent: "center", alignItems: "center" },
   flowerFallbackEmoji: { fontSize: 88 },
   stageText: {
