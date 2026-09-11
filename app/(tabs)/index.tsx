@@ -19,9 +19,12 @@ import Animated, {
 
 import { FlowerStage } from "@/components/flower-stage";
 import { MilestoneCelebration } from "@/components/milestone-celebration";
+import { NoteReaction } from "@/components/note-reaction";
+import { StageProgress } from "@/components/stage-progress";
 import { Toast } from "@/components/toast";
 import { WeeklyRecap } from "@/components/weekly-recap";
-import { useGarden, STAGE_NAMES } from "@/hooks/use-garden";
+import { useGarden } from "@/hooks/use-garden";
+import { FLOWER_COLORS } from "@/hooks/use-garden-colors";
 import { useGardenColors } from "@/hooks/use-garden-colors";
 
 export default function GardenScreen() {
@@ -41,6 +44,10 @@ export default function GardenScreen() {
     iCheckedInToday,
     partnerNote,
     myNote,
+    reactToNote,
+    partnerId,
+    myReactionToPartnerNote,
+    partnerReactionToMyNote,
   } = useGarden();
 
   const [joinCode, setJoinCode] = useState("");
@@ -129,6 +136,7 @@ export default function GardenScreen() {
   };
 
   const styles = getStyles(colors);
+  const accent = garden ? FLOWER_COLORS[garden.flowerColor] : FLOWER_COLORS.pink;
 
   if (loading) {
     return (
@@ -215,7 +223,7 @@ export default function GardenScreen() {
   return (
     <LinearGradient colors={[colors.gradientFrom, colors.gradientTo]} style={styles.flexFill}>
       <View style={styles.container}>
-        <View style={[styles.topDecoration, { backgroundColor: colors.decorationA }]} pointerEvents="none" />
+        <View style={[styles.topDecoration, { backgroundColor: accent.gradient[0] }]} pointerEvents="none" />
 
         <Toast message={toastMessage} colors={colors} />
         <MilestoneCelebration milestone={milestone} onDone={clearMilestone} />
@@ -227,6 +235,15 @@ export default function GardenScreen() {
           ]}
         >
           <Animated.View pointerEvents="none" style={flashStyle} />
+          {/* Thin color-coded strip along the top of the card ties the
+              chosen flower theme to the whole card, not just the emoji. */}
+          <LinearGradient
+            colors={accent.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.accentStrip}
+            pointerEvents="none"
+          />
 
           <Text style={styles.gardenName} numberOfLines={1}>
             {garden.name || "Your Garden"}
@@ -234,7 +251,9 @@ export default function GardenScreen() {
 
           <FlowerStage stage={garden.stage} flowerColor={garden.flowerColor} />
 
-          <Text style={styles.stageText}>{STAGE_NAMES[garden.stage]}</Text>
+          <View style={styles.progressWrap}>
+            <StageProgress stage={garden.stage} accentColor={accent.swatch} colors={colors} />
+          </View>
 
           <View style={styles.metaRow}>
             <TouchableOpacity style={styles.metaPill} onPress={handleCopyCode} activeOpacity={0.7}>
@@ -276,7 +295,14 @@ export default function GardenScreen() {
 
           {partnerNote ? (
             <View style={styles.noteBubble}>
-              <Text style={styles.noteBubbleText}>💬 “{partnerNote.text}”</Text>
+              <Text style={styles.noteBubbleText}>💬 "{partnerNote.text}"</Text>
+              {partnerId && (
+                <NoteReaction
+                  currentReaction={myReactionToPartnerNote}
+                  onReact={(emoji) => reactToNote(partnerId, emoji)}
+                  colors={colors}
+                />
+              )}
             </View>
           ) : null}
 
@@ -287,12 +313,26 @@ export default function GardenScreen() {
           ) : bothCheckedInToday ? (
             <View style={styles.waitingBox}>
               <Text style={styles.waitingText}>🌸 You both checked in today! See you tomorrow.</Text>
-              {myNote ? <Text style={styles.myNoteText}>Your note: “{myNote.text}”</Text> : null}
+              {myNote ? (
+                <>
+                  <Text style={styles.myNoteText}>Your note: "{myNote.text}"</Text>
+                  {partnerReactionToMyNote ? (
+                    <Text style={styles.myNoteReaction}>{partnerReactionToMyNote} from your partner</Text>
+                  ) : null}
+                </>
+              ) : null}
             </View>
           ) : iCheckedInToday ? (
             <View style={styles.waitingBox}>
               <Text style={styles.waitingText}>✅ You checked in today. Waiting on your partner!</Text>
-              {myNote ? <Text style={styles.myNoteText}>Your note: “{myNote.text}”</Text> : null}
+              {myNote ? (
+                <>
+                  <Text style={styles.myNoteText}>Your note: "{myNote.text}"</Text>
+                  {partnerReactionToMyNote ? (
+                    <Text style={styles.myNoteReaction}>{partnerReactionToMyNote} from your partner</Text>
+                  ) : null}
+                </>
+              ) : null}
             </View>
           ) : (
             <>
@@ -386,6 +426,7 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
       backgroundColor: colors.cardBackground,
       borderRadius: 20,
       padding: 28,
+      paddingTop: 24,
       marginBottom: 24,
       alignItems: "center",
       overflow: "hidden",
@@ -396,6 +437,13 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
       shadowRadius: 24,
       elevation: 3,
     },
+    accentStrip: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 5,
+    },
     gardenName: {
       fontSize: 14,
       fontWeight: "700",
@@ -404,7 +452,7 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
       letterSpacing: 0.8,
       marginBottom: 4,
     },
-    stageText: { fontSize: 22, fontWeight: "800", color: colors.text, marginTop: 4 },
+    progressWrap: { width: "100%", marginTop: 10, marginBottom: 4 },
     metaRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 10, marginTop: 14, marginBottom: 4 },
     metaPill: {
       flexDirection: "row",
@@ -429,6 +477,7 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
     },
     noteBubbleText: { color: colors.text, fontSize: 13, fontStyle: "italic" },
     myNoteText: { color: colors.textMuted, fontSize: 12, marginTop: 6, textAlign: "center" },
+    myNoteReaction: { color: colors.textFaint, fontSize: 12, marginTop: 4, textAlign: "center" },
     waitingBox: {
       backgroundColor: colors.inputBackground,
       borderRadius: 12,

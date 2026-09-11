@@ -30,7 +30,7 @@ export default function RegisterScreen() {
       return;
     }
 
-       setSubmitting(true);
+    setSubmitting(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       router.replace("/onboarding");
@@ -39,6 +39,7 @@ export default function RegisterScreen() {
     } finally {
       setSubmitting(false);
     }
+  };
 
   const canSubmit =
     email.trim().length > 0 &&

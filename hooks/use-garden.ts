@@ -20,6 +20,13 @@ import type { FlowerColorKey } from "@/hooks/use-garden-colors";
 export const STAGE_NAMES = ["Seed", "Sprout", "Bud", "Blooming", "Full Bloom"];
 export const STREAK_MILESTONES = [7, 30, 100];
 export const FREEZE_EVERY_STREAK_DAYS = 30;
+export const REACTION_EMOJIS = ["❤️", "😂", "👏", "🔥", "🥹"];
+
+export type WeeklyStory = {
+  text: string;
+  weekStart: string; // yyyy-mm-dd, Sunday of the week it covers
+  generatedAt: string;
+};
 
 export type Garden = {
   id: string;
@@ -33,6 +40,9 @@ export type Garden = {
   lastSuccessDate: string | null;
   history: Record<string, Record<string, boolean>>;
   notes: Record<string, { text: string; date: string }>;
+  // Reaction given to a member's current note, keyed by the note owner's uid.
+  noteReactions: Record<string, string>;
+  weeklyStory: WeeklyStory | null;
   flowerColor: FlowerColorKey;
   createdAt: unknown;
 };
@@ -81,6 +91,8 @@ function normalizeGarden(id: string, data: DocumentData): Garden {
     lastSuccessDate: data.lastSuccessDate ?? null,
     history: data.history ?? {},
     notes: data.notes ?? {},
+    noteReactions: data.noteReactions ?? {},
+    weeklyStory: data.weeklyStory ?? null,
     flowerColor: data.flowerColor ?? "pink",
     createdAt: data.createdAt ?? null,
   };
@@ -148,6 +160,8 @@ export function useGarden() {
         lastSuccessDate: null,
         history: {},
         notes: {},
+        noteReactions: {},
+        weeklyStory: null,
         flowerColor: "pink",
         createdAt: new Date(),
       });
@@ -198,6 +212,8 @@ export function useGarden() {
     updates[`history.${today}.${uid}`] = true;
     if (note && note.trim()) {
       updates[`notes.${uid}`] = { text: note.trim().slice(0, 140), date: today };
+      // A fresh note clears any reaction left on the previous one.
+      updates[`noteReactions.${uid}`] = null;
     }
 
     let nextMilestone: Milestone = null;
@@ -262,6 +278,20 @@ export function useGarden() {
 
   const clearMilestone = () => setMilestone(null);
 
+  // React to your partner's current note with a single emoji. Only one
+  // reaction is kept per note (re-reacting replaces it); the reaction is
+  // cleared automatically whenever that member posts a new note.
+  const reactToNote = async (noteOwnerUid: string, emoji: string) => {
+    if (!garden) return;
+    try {
+      await updateDoc(doc(db, "gardens", garden.id), {
+        [`noteReactions.${noteOwnerUid}`]: emoji,
+      });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   const setFlowerColor = async (color: FlowerColorKey) => {
     if (!garden) return;
     try {
@@ -302,6 +332,8 @@ export function useGarden() {
   const iCheckedInToday = garden?.lastCheckIn[uid] === todayString();
   const partnerNote = partnerId ? garden?.notes[partnerId] : undefined;
   const myNote = garden?.notes[uid];
+  const myReactionToPartnerNote = partnerId ? garden?.noteReactions?.[partnerId] : undefined;
+  const partnerReactionToMyNote = garden?.noteReactions?.[uid];
 
   return {
     uid,
@@ -317,11 +349,14 @@ export function useGarden() {
     leaveGarden,
     setFlowerColor,
     updateGardenName,
+    reactToNote,
     partnerId,
     partnerCheckedInToday,
     iCheckedInToday,
     partnerNote,
     myNote,
+    myReactionToPartnerNote,
+    partnerReactionToMyNote,
     today: todayString(),
   };
 }

@@ -2,11 +2,42 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export type FlowerColorKey = "pink" | "purple" | "coral" | "sunny";
 
-export const FLOWER_COLORS: Record<FlowerColorKey, { label: string; swatch: string; emoji: string[] }> = {
-  pink: { label: "Blossom", swatch: "#f48fb1", emoji: ["🌰", "🌱", "🌿", "🌷", "🌸"] },
-  purple: { label: "Lavender", swatch: "#b39ddb", emoji: ["🌰", "🌱", "🌿", "💜", "🪻"] },
-  coral: { label: "Sunset", swatch: "#ff8a65", emoji: ["🌰", "🌱", "🌿", "🌺", "🌻"] },
-  sunny: { label: "Daisy", swatch: "#ffd54f", emoji: ["🌰", "🌱", "🌿", "🌼", "🌼"] },
+export const FLOWER_COLORS: Record<
+  FlowerColorKey,
+  {
+    label: string;
+    swatch: string;
+    emoji: string[];
+    // Two-stop gradient used for the garden card's accent wash and the
+    // top decoration blob, so each flower color feels like its own theme
+    // instead of just recoloring a single dot on the profile screen.
+    gradient: [string, string];
+  }
+> = {
+  pink: {
+    label: "Blossom",
+    swatch: "#f48fb1",
+    emoji: ["🌰", "🌱", "🌿", "🌷", "🌸"],
+    gradient: ["#ffd7e6", "#ffeef4"],
+  },
+  purple: {
+    label: "Lavender",
+    swatch: "#b39ddb",
+    emoji: ["🌰", "🌱", "🌿", "💜", "🪻"],
+    gradient: ["#e3d6f7", "#f2ecfb"],
+  },
+  coral: {
+    label: "Sunset",
+    swatch: "#ff8a65",
+    emoji: ["🌰", "🌱", "🌿", "🌺", "🌻"],
+    gradient: ["#ffd3bf", "#ffe9de"],
+  },
+  sunny: {
+    label: "Daisy",
+    swatch: "#ffd54f",
+    emoji: ["🌰", "🌱", "🌿", "🌼", "🌼"],
+    gradient: ["#fff0b3", "#fffae0"],
+  },
 };
 
 const light = {

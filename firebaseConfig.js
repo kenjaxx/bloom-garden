@@ -13,7 +13,7 @@ const firebaseConfig = {
   appId: "1:70750351934:web:ba6420e308a180f288976f"
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 
 export const auth =
   Platform.OS === "web"

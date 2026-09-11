@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { auth } from "@/firebaseConfig";
@@ -10,11 +10,36 @@ import { FLOWER_COLORS, FlowerColorKey, useGardenColors } from "@/hooks/use-gard
 export default function ProfileScreen() {
   const router = useRouter();
   const colors = useGardenColors();
-  const { garden, setFlowerColor, leaveGarden, updateGardenName } = useGarden();
+  const { garden, uid, setFlowerColor, leaveGarden, updateGardenName } = useGarden();
   const [leaving, setLeaving] = useState(false);
   const [nameDraft, setNameDraft] = useState(garden?.name ?? "");
   const [savingName, setSavingName] = useState(false);
   const styles = getStyles(colors);
+
+  const stats = useMemo(() => {
+    if (!garden) return null;
+    const partnerId = garden.members.find((m) => m !== uid);
+    let bothBloomed = 0;
+    let soloBloomed = 0;
+    for (const record of Object.values(garden.history ?? {})) {
+      const meDid = !!record[uid];
+      const partnerDid = !!partnerId && !!record[partnerId];
+      if (meDid && partnerDid) bothBloomed += 1;
+      else if (meDid || partnerDid) soloBloomed += 1;
+    }
+    const createdAt = garden.createdAt as { toDate?: () => Date } | Date | null;
+    let ageDays: number | null = null;
+    const createdDate =
+      createdAt && typeof (createdAt as any).toDate === "function"
+        ? (createdAt as any).toDate()
+        : createdAt instanceof Date
+        ? createdAt
+        : null;
+    if (createdDate) {
+      ageDays = Math.max(0, Math.round((Date.now() - createdDate.getTime()) / 86400000));
+    }
+    return { bothBloomed, soloBloomed, ageDays };
+  }, [garden, uid]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -64,6 +89,23 @@ export default function ProfileScreen() {
 
         {garden ? (
           <>
+            {stats && (
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{stats.bothBloomed}</Text>
+                  <Text style={styles.statLabel}>days bloomed{"\n"}together</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{garden.streak}</Text>
+                  <Text style={styles.statLabel}>current{"\n"}streak</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{stats.ageDays ?? "–"}</Text>
+                  <Text style={styles.statLabel}>days since{"\n"}planted</Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Garden name</Text>
               <View style={styles.nameRow}>
@@ -162,7 +204,29 @@ function getStyles(colors: ReturnType<typeof useGardenColors>) {
       alignItems: "center",
     },
     title: { fontSize: 22, fontWeight: "bold", marginBottom: 12, color: colors.text },
-    email: { fontSize: 16, color: colors.textMuted, marginBottom: 32 },
+    email: { fontSize: 16, color: colors.textMuted, marginBottom: 24 },
+    statsRow: {
+      flexDirection: "row",
+      width: "100%",
+      gap: 10,
+      marginBottom: 24,
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.cardBorderColor,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: colors.cardShadowOpacity,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    statValue: { fontSize: 22, fontWeight: "800", color: colors.primary },
+    statLabel: { fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 4, lineHeight: 13 },
     section: { width: "100%", marginBottom: 24 },
     sectionTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 10 },
     nameRow: { flexDirection: "row", gap: 10 },
