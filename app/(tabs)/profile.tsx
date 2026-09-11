@@ -42,8 +42,14 @@ export default function ProfileScreen() {
   }, [garden, uid]);
 
   const handleSignOut = async () => {
+    // No manual navigation here on purpose: the root layout's auth guard
+    // (contexts/auth-context.tsx + app/_layout.tsx) watches Firebase's
+    // auth state directly and redirects to the login screen the moment
+    // it changes, from anywhere in the app. This avoids the old bug where
+    // an imperative router.replace() right here could race with (or be
+    // ignored by) in-flight navigation and leave you stuck on the garden
+    // screen until a manual refresh.
     await signOut(auth);
-    router.replace("/");
   };
 
   const handleSaveName = async () => {
@@ -72,6 +78,14 @@ export default function ProfileScreen() {
             setLeaving(true);
             try {
               await leaveGarden();
+              // Leaving doesn't change auth state, so the guard doesn't
+              // apply here — but useGarden's onSnapshot listener will
+              // update `garden` to null on its own, which makes the
+              // Garden tab fall back to its "create or join" screen
+              // automatically. Jump back there so the user sees it.
+              router.replace("/(tabs)");
+            } catch {
+              // error already surfaced via hook -> toast on the Garden tab
             } finally {
               setLeaving(false);
             }

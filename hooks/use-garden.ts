@@ -13,7 +13,8 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { auth, db } from "@/firebaseConfig";
+import { db } from "@/firebaseConfig";
+import { useAuth } from "@/contexts/auth-context";
 import { notifyPartnerCheckedIn } from "@/notifications";
 import type { FlowerColorKey } from "@/hooks/use-garden-colors";
 
@@ -104,11 +105,29 @@ export function useGarden() {
   const [error, setError] = useState("");
   const [milestone, setMilestone] = useState<Milestone>(null);
 
-  const uid = auth.currentUser?.uid ?? "";
+  // Reading uid from the shared auth context (rather than auth.currentUser
+  // directly) means this hook re-renders — and its Firestore subscription
+  // below tears down — the instant sign-out happens, instead of waiting on
+  // some unrelated re-render to notice the change. This is what was
+  // causing the "Missing or insufficient permissions" console error and
+  // the app appearing stuck on the Garden tab after signing out: the old
+  // listener kept running with a now-invalid session until something else
+  // happened to re-render this component.
+  const { user } = useAuth();
+  const uid = user?.uid ?? "";
   const prevPartnerCheckedIn = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid) {
+      // No signed-in user (e.g. just signed out): make sure we don't hold
+      // onto stale garden data or a stuck loading state.
+      setGarden(null);
+      setLoading(false);
+      prevPartnerCheckedIn.current = null;
+      return;
+    }
+
+    setLoading(true);
     const q = query(collection(db, "gardens"), where("members", "array-contains", uid));
     const unsubscribe = onSnapshot(
       q,

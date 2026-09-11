@@ -1,7 +1,9 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
 
 type ErrorBoundaryProps = {
   children: React.ReactNode;
@@ -39,14 +41,61 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
+/**
+ * Declarative auth guard. Rather than imperatively calling router.replace()
+ * from an effect (which can race with other navigation, or simply not fire
+ * if this component doesn't re-run at the right moment), this renders a
+ * <Redirect> whenever the current segment doesn't match the auth state.
+ * Expo Router applies <Redirect> synchronously during render, which is why
+ * this is the pattern Expo's own docs recommend for protected routes — it
+ * fixed the bug where sign-out / leave-garden left you stuck on the tabs
+ * screen (with a stale Firestore listener still attached) until a refresh.
+ */
+function RootNavigationGuard({ children }: { children: React.ReactNode }) {
+  const { user, initializing } = useAuth();
+  const segments = useSegments();
+
+  if (initializing) {
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color="#4caf50" />
+      </View>
+    );
+  }
+
+  // For the root index route ("/"), useSegments() returns an empty array.
+  const topSegment = segments[0];
+  const inProtectedGroup = topSegment === '(tabs)';
+  const onSignedOutScreens = topSegment === undefined || topSegment === 'register';
+
+  if (!user && inProtectedGroup) {
+    // Signed out (or session expired) while inside the app -> bounce to login.
+    return <Redirect href="/" />;
+  }
+
+  if (user && onSignedOutScreens) {
+    // Already signed in but sitting on the login/register screen -> go in.
+    // ('onboarding' is intentionally excluded so a freshly registered user
+    // still sees it before landing on tabs.)
+    return <Redirect href="/(tabs)" />;
+  }
+
+  return <>{children}</>;
+}
+
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <AuthProvider>
+        <RootNavigationGuard>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="register" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </RootNavigationGuard>
+      </AuthProvider>
       <StatusBar style="auto" />
     </ErrorBoundary>
   );
@@ -57,4 +106,10 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 20, fontWeight: 'bold', color: '#e53935', marginBottom: 12 },
   errorMessage: { fontSize: 16, marginBottom: 12 },
   errorStack: { fontSize: 12, color: '#666' },
+  splash: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eef5ee',
+  },
 });

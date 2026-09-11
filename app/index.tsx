@@ -1,21 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-import { useEffect, useState } from "react";
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { auth } from "../firebaseConfig";
 
 export default function LoginScreen() {
@@ -27,14 +29,26 @@ export default function LoginScreen() {
   const [sendingReset, setSendingReset] = useState(false);
   const router = useRouter();
 
+  // Gentle entrance animation so the screen feels considered rather than
+  // just "popping in". Purely cosmetic — no logic depends on this.
+  const fade = useRef(new Animated.Value(0)).current;
+  const rise = useRef(new Animated.Value(16)).current;
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/(tabs)");
-      }
-    });
-    return unsubscribe;
-  }, []);
+    // The native animation driver isn't available on web, and trying to
+    // use it there just spams the console with a warning — so fall back
+    // to the JS driver specifically on web.
+    const useNativeDriver = Platform.OS !== "web";
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 1, duration: 450, useNativeDriver }),
+      Animated.timing(rise, { toValue: 0, duration: 450, useNativeDriver }),
+    ]).start();
+  }, [fade, rise]);
+
+  // Note: there's no auth-state redirect here anymore. The root layout's
+  // guard (contexts/auth-context.tsx + app/_layout.tsx) watches Firebase
+  // auth state once, globally, and sends signed-in users to /(tabs)
+  // automatically — including right after a successful login below.
 
   const handleLogin = async () => {
     setError("");
@@ -71,88 +85,114 @@ export default function LoginScreen() {
   const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topDecoration} pointerEvents="none" />
-
-      <View style={styles.headerBlock}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoEmoji}>🌱</Text>
-        </View>
-        <Text style={styles.title}>Bloom Garden</Text>
-        <Text style={styles.subtitle}>Grow something together, one day at a time</Text>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="mail-outline" size={20} color="#8a9a8a" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#a3b0a3"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        <View style={styles.inputWrapper}>
-          <Ionicons name="lock-closed-outline" size={20} color="#8a9a8a" style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, styles.inputFlex]}
-            placeholder="Password"
-            placeholderTextColor="#a3b0a3"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10} style={styles.eyeButton}>
-            <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#8a9a8a" />
-          </Pressable>
-        </View>
-
-        <TouchableOpacity
-          onPress={handleForgotPassword}
-          disabled={sendingReset}
-          style={styles.forgotRow}
-          activeOpacity={0.7}
+    <LinearGradient colors={["#eaf6ec", "#f4f9f4", "#fbeff4"]} style={styles.flexFill}>
+      <KeyboardAvoidingView
+        style={styles.flexFill}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.forgotText}>
-            {sendingReset ? "Sending reset link..." : "Forgot password?"}
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.decorationTop} pointerEvents="none" />
+          <View style={styles.decorationBottom} pointerEvents="none" />
 
-        {error ? (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle-outline" size={16} color="#c0392b" />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
+          <Animated.View
+            style={[
+              styles.animatedWrap,
+              { opacity: fade, transform: [{ translateY: rise }] },
+            ]}
+          >
+            <View style={styles.headerBlock}>
+              <LinearGradient
+                colors={["#ffffff", "#f3fbf3"]}
+                style={styles.logoCircle}
+              >
+                <Text style={styles.logoEmoji}>🌱</Text>
+              </LinearGradient>
+              <Text style={styles.title}>Bloom Garden</Text>
+              <Text style={styles.subtitle}>Grow something together, one day at a time</Text>
+            </View>
 
-        <TouchableOpacity
-          style={[styles.button, !canSubmit && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={!canSubmit}
-          activeOpacity={0.85}
-        >
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log In</Text>}
-        </TouchableOpacity>
+            <View style={styles.card}>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="#8a9a8a" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#a3b0a3"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                  returnKeyType="next"
+                />
+              </View>
 
-        <TouchableOpacity
-          style={styles.registerLinkRow}
-          onPress={() => router.push("/register")}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.registerLinkText}>
-            Don&apos;t have an account? <Text style={styles.registerLinkBold}>Sign Up</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#8a9a8a" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, styles.inputFlex]}
+                  placeholder="Password"
+                  placeholderTextColor="#a3b0a3"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={canSubmit ? handleLogin : undefined}
+                />
+                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10} style={styles.eyeButton}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#8a9a8a" />
+                </Pressable>
+              </View>
 
-      <Text style={styles.footerText}>
-        Check in daily with your partner and watch your garden bloom 🌸
-      </Text>
-    </View>
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                disabled={sendingReset}
+                style={styles.forgotRow}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotText}>
+                  {sendingReset ? "Sending reset link..." : "Forgot password?"}
+                </Text>
+              </TouchableOpacity>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#c0392b" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, !canSubmit && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={!canSubmit}
+                activeOpacity={0.85}
+              >
+                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log In</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.registerLinkRow}
+                onPress={() => router.push("/register")}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.registerLinkText}>
+                  Don&apos;t have an account? <Text style={styles.registerLinkBold}>Sign Up</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.footerText}>
+              Check in daily with your partner and watch your garden bloom 🌸
+            </Text>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
@@ -173,22 +213,38 @@ function friendlyError(e: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  flexFill: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#eef5ee",
   },
-  topDecoration: {
+  decorationTop: {
     position: "absolute",
-    top: -100,
+    top: -110,
     right: "50%",
-    marginRight: -340,
+    marginRight: -320,
     width: 260,
     height: 260,
     borderRadius: 130,
     backgroundColor: "#dcefdc",
+    opacity: 0.8,
+  },
+  decorationBottom: {
+    position: "absolute",
+    bottom: -130,
+    left: "50%",
+    marginLeft: -300,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "#f6dbe8",
+    opacity: 0.6,
+  },
+  animatedWrap: {
+    width: "100%",
+    alignItems: "center",
   },
   headerBlock: {
     alignItems: "center",
@@ -197,22 +253,21 @@ const styles = StyleSheet.create({
     maxWidth: 420,
   },
   logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#ffffff",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 16,
     shadowColor: "#2f5233",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 5,
   },
-  logoEmoji: { fontSize: 34 },
+  logoEmoji: { fontSize: 38 },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "800",
     color: "#22392a",
     letterSpacing: 0.2,
@@ -227,13 +282,13 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 420,
     backgroundColor: "#ffffff",
-    borderRadius: 20,
-    padding: 22,
+    borderRadius: 24,
+    padding: 24,
     shadowColor: "#1c2e1f",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.1,
+    shadowRadius: 28,
+    elevation: 4,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -281,15 +336,15 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: "#4caf50",
-    paddingVertical: 15,
+    paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#4caf50",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   buttonDisabled: {
     backgroundColor: "#a9d3ab",
