@@ -5,13 +5,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCCw7QdPHfV-BXESfOTAsKjJZ43b-Bc8MU",
-  authDomain: "bloom-garden-dcdb4.firebaseapp.com",
-  projectId: "bloom-garden-dcdb4",
-  storageBucket: "bloom-garden-dcdb4.firebasestorage.app",
-  messagingSenderId: "70750351934",
-  appId: "1:70750351934:web:ba6420e308a180f288976f"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
+
+if (!firebaseConfig.apiKey) {
+  console.warn(
+    "Missing Firebase env vars — make sure you have a .env file (see .env.example) and restart the Metro bundler."
+  );
+}
 
 export const app = initializeApp(firebaseConfig);
 

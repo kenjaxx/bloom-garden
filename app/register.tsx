@@ -12,8 +12,12 @@ import {
   View,
 } from "react-native";
 import { auth } from "../firebaseConfig";
+import { useGardenColors, type GardenColors } from "@/hooks/use-garden-colors";
 
 export default function RegisterScreen() {
+  const colors = useGardenColors();
+  const styles = getStyles(colors);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,11 +65,11 @@ export default function RegisterScreen() {
 
       <View style={styles.card}>
         <View style={styles.inputWrapper}>
-          <Ionicons name="mail-outline" size={20} color="#8a9a8a" style={styles.inputIcon} />
+          <Ionicons name="mail-outline" size={20} color={colors.icon} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#a3b0a3"
+            placeholderTextColor={colors.textFaint}
             autoCapitalize="none"
             keyboardType="email-address"
             value={email}
@@ -74,17 +78,17 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.inputWrapper}>
-          <Ionicons name="lock-closed-outline" size={20} color="#8a9a8a" style={styles.inputIcon} />
+          <Ionicons name="lock-closed-outline" size={20} color={colors.icon} style={styles.inputIcon} />
           <TextInput
             style={[styles.input, styles.inputFlex]}
             placeholder="Password"
-            placeholderTextColor="#a3b0a3"
+            placeholderTextColor={colors.textFaint}
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
           />
           <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10} style={styles.eyeButton}>
-            <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#8a9a8a" />
+            <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={colors.icon} />
           </Pressable>
         </View>
 
@@ -92,13 +96,13 @@ export default function RegisterScreen() {
           <Ionicons
             name="checkmark-circle-outline"
             size={20}
-            color="#8a9a8a"
+            color={colors.icon}
             style={styles.inputIcon}
           />
           <TextInput
             style={styles.input}
             placeholder="Confirm Password"
-            placeholderTextColor="#a3b0a3"
+            placeholderTextColor={colors.textFaint}
             secureTextEntry={!showPassword}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -107,7 +111,7 @@ export default function RegisterScreen() {
 
         {error ? (
           <View style={styles.errorBox}>
-            <Ionicons name="alert-circle-outline" size={16} color="#c0392b" />
+            <Ionicons name="alert-circle-outline" size={16} color={colors.errorText} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
@@ -150,137 +154,143 @@ function friendlyError(e: any) {
   return e?.message || "Something went wrong. Please try again.";
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-    backgroundColor: "#eef5ee",
-  },
-  topDecoration: {
-    position: "absolute",
-    top: -100,
-    right: "50%",
-    marginRight: -340,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "#f6dbe8",
-  },
-  headerBlock: {
-    alignItems: "center",
-    marginBottom: 28,
-    width: "100%",
-    maxWidth: 420,
-  },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#ffffff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-    shadowColor: "#2f5233",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  logoEmoji: { fontSize: 34 },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#22392a",
-    letterSpacing: 0.2,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#6f8272",
-    marginTop: 6,
-    textAlign: "center",
-  },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
-    padding: 22,
-    shadowColor: "#1c2e1f",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#e3ece3",
-    backgroundColor: "#f8fbf8",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    marginBottom: 14,
-    height: 52,
-  },
-  inputIcon: { marginRight: 10 },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: "#22392a",
-  },
-  inputFlex: { marginRight: 6 },
-  eyeButton: { padding: 4 },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fdecea",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginBottom: 14,
-    gap: 6,
-  },
-  errorText: {
-    color: "#c0392b",
-    fontSize: 13,
-    flex: 1,
-  },
-  button: {
-    backgroundColor: "#4caf50",
-    paddingVertical: 15,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#4caf50",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  buttonDisabled: {
-    backgroundColor: "#a9d3ab",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonText: {
-    color: "#fff",
-    textAlign: "center",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  registerLinkRow: {
-    marginTop: 18,
-    alignItems: "center",
-  },
-  registerLinkText: {
-    fontSize: 14,
-    color: "#6f8272",
-  },
-  registerLinkBold: {
-    color: "#4caf50",
-    fontWeight: "700",
-  },
-});
+function getStyles(colors: GardenColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+      backgroundColor: colors.background,
+    },
+    topDecoration: {
+      position: "absolute",
+      top: -100,
+      right: "50%",
+      marginRight: -340,
+      width: 260,
+      height: 260,
+      borderRadius: 130,
+      backgroundColor: colors.decorationB,
+    },
+    headerBlock: {
+      alignItems: "center",
+      marginBottom: 28,
+      width: "100%",
+      maxWidth: 420,
+    },
+    logoCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.cardBackground,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.cardBorderColor,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: colors.cardShadowOpacity,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    logoEmoji: { fontSize: 34 },
+    title: {
+      fontSize: 26,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: 0.2,
+      textAlign: "center",
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.textMuted,
+      marginTop: 6,
+      textAlign: "center",
+    },
+    card: {
+      width: "100%",
+      maxWidth: 420,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 20,
+      padding: 22,
+      borderWidth: 1,
+      borderColor: colors.cardBorderColor,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: colors.cardShadowOpacity,
+      shadowRadius: 24,
+      elevation: 3,
+    },
+    inputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1.5,
+      borderColor: colors.inputBorder,
+      backgroundColor: colors.inputBackground,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      marginBottom: 14,
+      height: 52,
+    },
+    inputIcon: { marginRight: 10 },
+    input: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+    },
+    inputFlex: { marginRight: 6 },
+    eyeButton: { padding: 4 },
+    errorBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.errorBackground,
+      borderRadius: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      marginBottom: 14,
+      gap: 6,
+    },
+    errorText: {
+      color: colors.errorText,
+      fontSize: 13,
+      flex: 1,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      paddingVertical: 15,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    buttonDisabled: {
+      backgroundColor: colors.primaryDisabled,
+      shadowOpacity: 0,
+      elevation: 0,
+    },
+    buttonText: {
+      color: "#fff",
+      textAlign: "center",
+      fontWeight: "700",
+      fontSize: 15,
+    },
+    registerLinkRow: {
+      marginTop: 18,
+      alignItems: "center",
+    },
+    registerLinkText: {
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+    registerLinkBold: {
+      color: colors.primary,
+      fontWeight: "700",
+    },
+  });
+}

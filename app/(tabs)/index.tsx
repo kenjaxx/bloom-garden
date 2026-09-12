@@ -20,6 +20,7 @@ import Animated, {
 import { FlowerStage } from "@/components/flower-stage";
 import { MilestoneCelebration } from "@/components/milestone-celebration";
 import { NoteReaction } from "@/components/note-reaction";
+import { ScreenState } from "@/components/screen-state";
 import { StageProgress } from "@/components/stage-progress";
 import { Toast } from "@/components/toast";
 import { WeeklyRecap } from "@/components/weekly-recap";
@@ -138,14 +139,8 @@ export default function GardenScreen() {
   const styles = getStyles(colors);
   const accent = garden ? FLOWER_COLORS[garden.flowerColor] : FLOWER_COLORS.pink;
 
-  if (loading) {
-    return (
-      <LinearGradient colors={[colors.gradientFrom, colors.gradientTo]} style={styles.flexFill}>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </LinearGradient>
-    );
+ if (loading) {
+    return <ScreenState colors={colors} loading />;
   }
 
   if (!garden) {

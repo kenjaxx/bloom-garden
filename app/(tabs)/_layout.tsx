@@ -42,18 +42,12 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 /**
- * Auth-gated navigator.
- *
- * This uses expo-router's built-in <Stack.Protected> instead of a manual
- * segments + <Redirect> guard. A hand-rolled guard (what this app had
- * before) computes "where should I be" on every render and issues a
- * navigation call whenever that disagrees with the current route — if
- * anything causes the auth state or segments to be momentarily
- * inconsistent across renders, that turns into a redirect loop (which is
- * exactly the "Throttling navigation to prevent the browser from hanging"
- * error). <Stack.Protected> avoids this entirely: it just mounts/unmounts
- * screens based on the `guard` prop and automatically falls back to the
- * nearest allowed screen, with no manual history manipulation involved.
+ * Auth-gated root navigator using expo-router's <Stack.Protected>.
+ * This mounts/unmounts screens based on the `guard` prop and falls back
+ * to the nearest allowed screen automatically — no manual segments +
+ * <Redirect> logic, which is what previously caused a redirect-loop
+ * ("Throttling navigation...") when auth state and segments were
+ * momentarily inconsistent across renders.
  */
 function AppNavigator() {
   const { user, initializing } = useAuth();
